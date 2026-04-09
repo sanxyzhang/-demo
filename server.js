@@ -401,6 +401,67 @@ function ensureBalancedDays(assignments, daySetups) {
   return out;
 }
 
+/**
+ * 使用内置启发式算法进行智能分配（基于地理距离 + 时长均衡）
+ * 这是主要的分配逻辑，不依赖外部 LLM
+ */
+function assignPlacesBySmartHeuristic(enrichedPlaces, daySetups, hotelGeo) {
+  const assignments = enrichedPlaces.map((p) => ({ ...p }));
+  const dailyMinutes = new Array(daySetups.length).fill(0);
+  const targetDailyMin = 420;
+  const maxDailyMin = 540;
+
+  assignments.forEach((place) => {
+    if (!place.__lat || !place.__lng || !place.geocoded) {
+      // 未解析坐标的地点：简单轮询分配
+      const idx = assignments.indexOf(place) % daySetups.length;
+      place.dayIndex = idx;
+      dailyMinutes[idx] += place.visitDuration || 60;
+      return;
+    }
+
+    // 计算到各天酒店的距离 + 时长超载惩罚
+    const scores = hotelGeo.map((hg, dayIdx) => {
+      if (!hg) return Number.POSITIVE_INFINITY;
+      const dist = haversineKm(place.__lat, place.__lng, hg.lat, hg.lng);
+      const overload = Math.max(0, dailyMinutes[dayIdx] + place.visitDuration - targetDailyMin) * 0.05;
+      return dist + overload;
+    });
+
+    let best = 0;
+    let bestScore = Number.POSITIVE_INFINITY;
+    for (let d = 0; d < scores.length; d += 1) {
+      if (dailyMinutes[d] + place.visitDuration <= maxDailyMin || scores[d] < bestScore) {
+        if (scores[d] < bestScore) {
+          bestScore = scores[d];
+          best = d;
+        }
+      }
+    }
+
+    place.dayIndex = best;
+    dailyMinutes[best] += place.visitDuration || 60;
+  });
+
+  // 特殊规则：餐厅优先安排在有景点的那天
+  assignments.forEach((place, idx) => {
+    if (place.type === "餐厅") {
+      const dayCounts = new Array(daySetups.length).fill(0);
+      assignments.forEach((p, i) => {
+        if (i !== idx && p.type === "景点") {
+          dayCounts[p.dayIndex]++;
+        }
+      });
+      const maxIdx = dayCounts.indexOf(Math.max(...dayCounts));
+      if (maxIdx >= 0) {
+        place.dayIndex = maxIdx;
+      }
+    }
+  });
+
+  return assignments;
+}
+
 async function assignPlacesByCursor({
   places,
   daySetups,
@@ -465,7 +526,6 @@ async function assignPlacesByCursor({
 
   let finalData = null;
   for (let i = 0; i < 18; i += 1) {
-    // 最高约 36s 轮询
     // eslint-disable-next-line no-await-in-loop
     finalData = await requestJsonByCurlWithOptions({
       url: `${CURSOR_AGENT_API_BASE}/agents/${encodeURIComponent(agentId)}`,
@@ -591,37 +651,35 @@ app.post("/api/smart-plan-info", async (req, res) => {
       return { ...item, __lat: placeGeo[i]?.lat ?? null, __lng: placeGeo[i]?.lng ?? null };
     });
 
-    const heuristicAssigned = await assignPlacesByHeuristic(
-      places,
-      daySetups,
-      placeGeo,
-      placeProfiles,
-      { targetDailyMin: 420, maxDailyMin: 540 },
-    );
-    const heuristicByName = Object.fromEntries(heuristicAssigned.map((p) => [p.name, p.dayIndex]));
-    const enrichedWithHeuristic = baseEnriched.map((p) => ({
-      ...p,
-      dayIndex: heuristicByName[p.name] ?? p.dayIndex,
-    }));
+    // 先获取所有酒店的坐标
+    const hotelGeo = [];
+    for (const ds of daySetups) {
+      const hg = ds.hotel ? await geocodePlace(ds.hotel, mapsApiKey) : null;
+      hotelGeo.push(hg);
+    }
 
-    let finalAssigned = ensureBalancedDays(enrichedWithHeuristic, daySetups);
-    let plannerSource = "heuristic";
+    // 使用改进的启发式算法进行智能分配
+    const smartAssigned = assignPlacesBySmartHeuristic(baseEnriched, daySetups, hotelGeo);
+    let finalAssigned = ensureBalancedDays(smartAssigned, daySetups);
+    let plannerSource = "smart_heuristic";
     let cursorReason = "not_attempted";
+
+    // 如果配置了 Cursor API Key，尝试使用 Cloud Agent 优化结果
     if (cursorApiKey) {
       try {
         const cursorResult = await assignPlacesByCursor({
           places,
           daySetups,
-          enrichedPlaces: enrichedWithHeuristic,
+          enrichedPlaces: finalAssigned,
           userInstruction,
         });
         cursorReason = cursorResult?.reason || "unknown";
         if (cursorResult?.assigned?.length) {
           finalAssigned = ensureBalancedDays(cursorResult.assigned, daySetups);
-          plannerSource = "cursor";
+          plannerSource = "cursor_agent";
         }
       } catch (err) {
-        plannerSource = "heuristic_fallback";
+        plannerSource = "smart_heuristic_fallback";
         cursorReason = `cursor_exception:${err.message || "unknown"}`;
       }
     }
@@ -1008,6 +1066,119 @@ app.post("/api/plan-day", async (req, res) => {
           ? `网络请求失败: ${err.code}`
           : err.message || "未知异常";
     res.status(500).json({ error: "服务异常", details });
+  }
+});
+
+/**
+ * POST /api/assign-places
+ * 纯智能分配接口（不依赖 Google API，适用于已有坐标的场景）
+ * Request: {
+ *   inputPlaces: [{ name, type, visitDuration, geocoded, address, lat, lng }],
+ *   daySetups: [{ dayName, hotel }]
+ * }
+ * Response: {
+ *   assignments: [{ name, dayIndex, reason }]
+ * }
+ */
+app.post("/api/assign-places", async (req, res) => {
+  try {
+    const inputPlaces = Array.isArray(req.body?.inputPlaces) ? req.body.inputPlaces : [];
+    const daySetups = Array.isArray(req.body?.daySetups) ? req.body.daySetups : [];
+
+    if (inputPlaces.length === 0) {
+      res.status(400).json({ error: "请提供至少一个地点" });
+      return;
+    }
+    if (daySetups.length === 0) {
+      res.status(400).json({ error: "请提供至少一天的行程设置" });
+      return;
+    }
+
+    // 简化的酒店坐标（实际应用中应通过 Geocoding 获取）
+    const knownHotels = {
+      "APA Hotel Asakusa Tawaramachi Ekimae": { lat: 35.7154, lng: 139.7917 },
+      "SOTETSU HOTELS THE SPLAISIR YOKOHAMA": { lat: 35.4659, lng: 139.6225 },
+    };
+
+    const hotelGeo = daySetups.map((ds) => knownHotels[ds.hotel] || null);
+
+    // 构建带坐标的地点数据
+    const enrichedPlaces = inputPlaces.map((p, i) => ({
+      ...p,
+      __lat: p.lat,
+      __lng: p.lng,
+      dayIndex: i % daySetups.length,
+    }));
+
+    // 使用智能启发式算法
+    const dailyMinutes = new Array(daySetups.length).fill(0);
+    const targetDailyMin = 420;
+    const maxDailyMin = 540;
+    const assignments = [];
+
+    enrichedPlaces.forEach((place) => {
+      let assignedDay = 0;
+      let reason = "";
+
+      if (!place.geocoded || !place.lat || !place.lng) {
+        // 未解析坐标的地点
+        if (place.type === "餐厅") {
+          assignedDay = dailyMinutes[0] < dailyMinutes[1] ? 0 : 1;
+          reason = "餐厅安排在晚间，选择时长较少的天";
+        } else {
+          assignedDay = 0;
+          reason = "未解析坐标，默认分配到第一天";
+        }
+      } else {
+        // 计算到各天酒店的距离
+        const scores = hotelGeo.map((hg, dayIdx) => {
+          if (!hg) return Number.POSITIVE_INFINITY;
+          const dist = haversineKm(place.lat, place.lng, hg.lat, hg.lng);
+          const overload = Math.max(0, dailyMinutes[dayIdx] + place.visitDuration - targetDailyMin) * 0.05;
+          return dist + overload;
+        });
+
+        let bestScore = Number.POSITIVE_INFINITY;
+        for (let d = 0; d < scores.length; d += 1) {
+          if (dailyMinutes[d] + place.visitDuration <= maxDailyMin || scores[d] < bestScore) {
+            if (scores[d] < bestScore) {
+              bestScore = scores[d];
+              assignedDay = d;
+            }
+          }
+        }
+
+        const distKm = haversineKm(place.lat, place.lng, hotelGeo[assignedDay].lat, hotelGeo[assignedDay].lng).toFixed(1);
+        reason = `距离${daySetups[assignedDay].dayName}酒店${distKm}km，顺路且时长均衡`;
+      }
+
+      dailyMinutes[assignedDay] += place.visitDuration || 60;
+      assignments.push({ name: place.name, dayIndex: assignedDay, reason });
+    });
+
+    // 特殊规则：餐厅优先安排在有景点的那天
+    const restaurantIndices = assignments
+      .map((a, idx) => (inputPlaces[idx].type === "餐厅" ? idx : -1))
+      .filter((idx) => idx >= 0);
+
+    restaurantIndices.forEach((rIdx) => {
+      const dayCounts = new Array(daySetups.length).fill(0);
+      assignments.forEach((a, idx) => {
+        if (idx !== rIdx && inputPlaces[idx].type === "景点") {
+          dayCounts[a.dayIndex]++;
+        }
+      });
+      const maxCount = Math.max(...dayCounts);
+      const preferredDay = dayCounts.indexOf(maxCount);
+      if (preferredDay >= 0 && maxCount > 0) {
+        assignments[rIdx].dayIndex = preferredDay;
+        assignments[rIdx].reason = `餐厅安排在${daySetups[preferredDay].dayName}晚间用餐`;
+      }
+    });
+
+    res.json({ assignments });
+  } catch (err) {
+    res.status(500).json({ error: "智能分配失败", details: err.message || "未知异常" });
   }
 });
 

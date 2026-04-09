@@ -1,0 +1,24 @@
+{
+  "assignments": [
+    {
+      "name": "浅草寺",
+      "dayIndex": 0,
+      "reason": "距离D1酒店0.5km，顺路且时长均衡"
+    },
+    {
+      "name": "代代木公园",
+      "dayIndex": 0,
+      "reason": "距离D1酒店10.1km，顺路且时长均衡"
+    },
+    {
+      "name": "横滨红砖仓库",
+      "dayIndex": 1,
+      "reason": "距离D2酒店2.4km，顺路且时长均衡"
+    },
+    {
+      "name": "一兰拉面",
+      "dayIndex": 0,
+      "reason": "餐厅安排在D1晚间用餐"
+    }
+  ]
+}
