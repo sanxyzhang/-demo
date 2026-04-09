@@ -1,0 +1,910 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #111827;
+  background: #f3f4f6;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== Header ===== */
+header {
+  padding: 12px 24px;
+  background: #1d4ed8;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-title h1 {
+  margin: 0 0 2px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.header-title p {
+  margin: 0;
+  opacity: 0.8;
+  font-size: 12px;
+}
+
+/* ===== Tab Nav ===== */
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.tab-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  border: none;
+  border-radius: 8px;
+  padding: 7px 18px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.tab-btn.active {
+  background: #fff;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+/* ===== Tab Sections ===== */
+.tab-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tab-section.hidden {
+  display: none;
+}
+
+/* ===== Editor Tab Layout ===== */
+main {
+  display: grid;
+  grid-template-columns: 440px 1fr;
+  gap: 16px;
+  padding: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.panel {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.head-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+#daysContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+/* ===== Buttons ===== */
+button {
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+button:hover {
+  background: #1e40af;
+}
+
+button.danger {
+  background: #dc2626;
+}
+
+button.danger:hover {
+  background: #991b1b;
+}
+
+.btn-teal {
+  background: #0d9488;
+}
+
+.btn-teal:hover {
+  background: #0f766e;
+}
+
+/* ===== Restaurant Box ===== */
+.restaurant-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+  padding: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.restaurant-box-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+#restaurantInput {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+#restaurantResult {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.restaurant-result-card {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.restaurant-result-card strong {
+  color: #111827;
+  font-size: 13px;
+}
+
+.restaurant-result-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  align-items: center;
+}
+
+.btn-link {
+  color: #1d4ed8;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
+}
+
+.add-to-day-btn {
+  background: #059669;
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.add-to-day-btn:hover {
+  background: #047857;
+}
+
+.add-to-day-btn:disabled {
+  background: #9ca3af;
+  cursor: default;
+}
+
+/* ===== Day Cards ===== */
+.day-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fafafa;
+}
+
+.day-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-title,
+.hotel-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.day-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ===== Place Rows ===== */
+.places {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.place-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.place-type {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 6px;
+  font-size: 13px;
+  background: #fff;
+  cursor: pointer;
+  color: #374151;
+  min-width: 90px;
+}
+
+.place-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 14px;
+}
+
+/* ===== Day Result ===== */
+.day-result {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.day-result a {
+  color: #1d4ed8;
+}
+
+.leg-list {
+  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leg-card {
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  border-radius: 8px;
+  padding: 8px;
+  line-height: 1.5;
+}
+
+/* ===== Map Panel ===== */
+.map-panel {
+  overflow: hidden;
+}
+
+#map {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+#statusText {
+  font-size: 13px;
+  color: #4b5563;
+  flex-shrink: 0;
+}
+
+/* ===== Plan Table Tab ===== */
+.plan-view {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.plan-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  background: #fff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  gap: 12px;
+}
+
+.plan-toolbar h2 {
+  white-space: nowrap;
+}
+
+.plan-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#planTableStatus {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.plan-empty {
+  color: #6b7280;
+  text-align: center;
+  padding: 48px 24px;
+  grid-column: 1 / -1;
+  font-size: 15px;
+}
+
+/* ===== Plan Cards ===== */
+.plan-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+}
+
+.plan-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f3f4f6;
+  background: #f9fafb;
+}
+
+.plan-day-index {
+  background: #1d4ed8;
+  color: #fff;
+  border-radius: 8px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.plan-day-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-day-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plan-hotel-name {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plan-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.status-done {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.plan-card-body {
+  padding: 12px 14px;
+  flex: 1;
+}
+
+.plan-card-footer {
+  padding: 10px 14px;
+  border-top: 1px solid #f3f4f6;
+  background: #fafafa;
+}
+
+.plan-maps-btn {
+  display: inline-block;
+  background: #2563eb;
+  color: #fff;
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.plan-maps-btn:hover {
+  background: #1e40af;
+}
+
+/* ===== Type Badges ===== */
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge-attraction {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-restaurant {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.badge-mall {
+  background: #f3e8ff;
+  color: #6d28d9;
+}
+
+.badge-other {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.badge-hotel {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* ===== Plan Timeline (optimized view) ===== */
+.plan-timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-stop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+.hotel-row {
+  background: #f0fdf4;
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin: 2px 0;
+}
+
+.stop-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #e5e7eb;
+  color: #374151;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.stop-name {
+  font-size: 13px;
+  color: #111827;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stop-role {
+  font-size: 11px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.plan-leg-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0 1px 10px;
+  color: #9ca3af;
+}
+
+.leg-arrow {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.leg-info {
+  font-size: 11px;
+}
+
+/* ===== Plan Raw List (unoptimized view) ===== */
+.plan-raw-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plan-hint {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+.plan-no-places {
+  color: #9ca3af;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+/* ===== Left Panel Sections ===== */
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.section-head h2 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.section-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 12px 0;
+  flex-shrink: 0;
+}
+
+.auto-plan-note {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+/* ===== Day Setup Rows ===== */
+.days-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.day-setup-row {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.day-name-input,
+.day-hotel-input {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  width: 100%;
+}
+
+.day-name-input:focus,
+.day-hotel-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* ===== Place Pool ===== */
+.place-pool {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.pool-place-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.place-type {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 6px;
+  font-size: 13px;
+  background: #fff;
+  cursor: pointer;
+  color: #374151;
+  min-width: 88px;
+}
+
+.place-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.place-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* ===== Editor Actions Bar ===== */
+.editor-actions {
+  flex-shrink: 0;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.instruction-input {
+  width: 100%;
+  min-height: 64px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.instruction-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.adjust-box {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.adjust-box button {
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.btn-large {
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  width: 100%;
+  border-radius: 10px;
+}
+
+.smart-plan-status {
+  font-size: 12px;
+  color: #6b7280;
+  min-height: 16px;
+  text-align: center;
+}
+
+/* ===== Plan Card Loading States ===== */
+.status-loading {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.plan-loading-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.loading-bar {
+  height: 12px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+
+.loading-bar.short {
+  width: 60%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.plan-error {
+  font-size: 12px;
+  color: #dc2626;
+  padding: 6px 0;
+}
+
+/* ===== Plan Stop Detail (with duration + tip) ===== */
+.stop-detail {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stop-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stop-dur {
+  font-size: 11px;
+  color: #6b7280;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.stop-desc {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.stop-tip {
+  font-size: 11px;
+  color: #d97706;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 980px) {
+  body {
+    overflow: auto;
+    height: auto;
+  }
+
+  .tab-section {
+    overflow: visible;
+  }
+
+  main {
+    grid-template-columns: 1fr;
+    height: auto;
+    padding: 12px;
+  }
+
+  .panel {
+    overflow: visible;
+  }
+
+  #map {
+    min-height: 380px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .plan-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .plan-view {
+    overflow: visible;
+  }
+}

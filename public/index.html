@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>旅行规划器</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <div class="header-content">
+        <div class="header-title">
+          <h1>旅行规划器</h1>
+          <p>添加地点池，一键智能规划每天行程。</p>
+        </div>
+        <nav class="tab-nav">
+          <button class="tab-btn active" data-tab="editor">✏️ 编辑行程</button>
+          <button class="tab-btn" data-tab="plan">📋 计划表总览</button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ===== Editor Tab ===== -->
+    <div id="tabEditor" class="tab-section">
+      <main>
+        <!-- Left Panel -->
+        <section class="panel left-panel">
+
+          <div class="auto-plan-note">
+            系统将自动按默认行程天数（东京2天 + 横滨/镰仓3天）完成分配，无需手填每天信息。
+          </div>
+
+          <!-- 2. 地点池：所有景点/餐厅/商场 -->
+          <div class="section-head">
+            <h2>地点池</h2>
+            <button id="addPlaceBtn" type="button">+ 添加项目</button>
+          </div>
+          <div id="placePool" class="place-pool"></div>
+
+          <!-- 操作区 -->
+          <div class="editor-actions">
+            <textarea id="plannerInstruction" class="instruction-input" placeholder="可选：规划指令（如：优先顺路，每天时长均匀；秋叶原放东京天）"></textarea>
+            <button id="smartPlanBtn" type="button" class="btn-teal btn-large">
+              ⚡ 智能规划所有天
+            </button>
+            <div id="smartPlanStatus" class="smart-plan-status"></div>
+          </div>
+
+        </section>
+
+        <!-- Right Panel: Map -->
+        <section class="panel map-panel">
+          <div class="panel-head">
+            <h2>地图预览</h2>
+            <span id="statusText">等待规划</span>
+          </div>
+          <div id="map"></div>
+        </section>
+      </main>
+    </div>
+
+    <!-- ===== Plan Table Tab ===== -->
+    <div id="tabPlan" class="tab-section hidden">
+      <div class="plan-view">
+        <div class="plan-toolbar">
+          <h2>旅行计划总览</h2>
+          <div class="plan-toolbar-right">
+            <span id="planTableStatus">请在「编辑行程」中添加地点并点击智能规划</span>
+            <button id="planAllBtn2" type="button" class="btn-teal">⚡ 重新规划</button>
+          </div>
+        </div>
+        <div class="adjust-box">
+          <textarea id="adjustInstruction" class="instruction-input" placeholder="二次调节指令：例如“把镰仓景点集中在第4天，餐厅尽量安排到每天最后一个点后”"></textarea>
+          <button id="applyAdjustBtn" type="button" class="btn-teal">🛠 应用二次调节</button>
+        </div>
+        <div id="planGrid" class="plan-grid"></div>
+      </div>
+    </div>
+
+    <!-- ===== Templates ===== -->
+
+    <!-- 行程设置行：天名 + 酒店 -->
+    <template id="daySetupTemplate">
+      <div class="day-setup-row">
+        <input class="day-name-input" type="text" placeholder="如：5.3 东京" />
+        <input class="day-hotel-input" type="text" placeholder="当天酒店名称" />
+        <button class="delete-day-btn danger" type="button" title="删除此天">×</button>
+      </div>
+    </template>
+
+    <!-- 地点池行：类型 + 名称 -->
+    <template id="poolPlaceTemplate">
+      <div class="pool-place-row">
+        <select class="place-type">
+          <option value="景点">🏛 景点</option>
+          <option value="餐厅">🍜 餐厅</option>
+          <option value="商场">🛍 商场</option>
+          <option value="其他">📍 其他</option>
+        </select>
+        <input class="place-input" type="text" placeholder="地点名称，如：浅草寺" />
+        <button class="delete-pool-place-btn danger" type="button" title="删除">×</button>
+      </div>
+    </template>
+
+    <script src="/config.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>
