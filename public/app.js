@@ -288,7 +288,7 @@ async function smartPlan() {
     }
   } catch (err) {
     setStatus(`❌ 获取景点信息失败：${err.message}`);
-    daySetups.forEach((_, i) => markPlanCardFailed(i, "景点信息查询失败，请检查 Cursor API Key 配置"));
+    daySetups.forEach((_, i) => markPlanCardFailed(i, "智能规划请求失败：请检查网络、GOOGLE_MAPS_API_KEY 与代理配置"));
     return;
   }
 

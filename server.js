@@ -19,7 +19,6 @@ const proxyUrl =
   process.env.all_proxy ||
   "";
 
-const CURSOR_CHAT_API_URL = "https://api.cursor.com/v1/chat/completions";
 const CURSOR_AGENT_API_BASE = "https://api.cursor.com/v0";
 const cursorSourceRepository = process.env.CURSOR_SOURCE_REPOSITORY || "";
 const DEFAULT_SMART_PLAN_PROMPT =
@@ -265,7 +264,9 @@ function safeJsonParse(text) {
 
 function extractFirstJsonObject(text) {
   if (!text) return null;
-  const trimmed = String(text).trim();
+  let trimmed = String(text).trim();
+  const fence = /^```(?:json)?\s*\n?([\s\S]*?)```/im.exec(trimmed);
+  if (fence) trimmed = fence[1].trim();
   const direct = safeJsonParse(trimmed);
   if (direct && typeof direct === "object") return direct;
   const start = trimmed.indexOf("{");
@@ -280,7 +281,7 @@ function extractFirstJsonObject(text) {
 function assignPlacesByHeuristic(places, daySetups, placeGeo, placeProfiles, options = {}) {
   const targetDailyMin = Number(options.targetDailyMin || 420);
   const maxDailyMin = Number(options.maxDailyMin || 540);
-  const hotelGeo = daySetups.map((d) => (d.hotel ? null : null));
+  const hotelGeo = daySetups.map(() => null);
 
   return (async () => {
     for (let i = 0; i < daySetups.length; i += 1) {
@@ -795,15 +796,26 @@ app.get("/api/diagnose", async (req, res) => {
     result.dnsError = err.message || "DNS 查询失败";
   }
 
-  if (result.dnsOk) {
+  if (result.dnsOk && mapsApiKey) {
     try {
-      const healthUrl = "https://maps.googleapis.com/maps/api/directions/json?origin=Tokyo&destination=Yokohama&mode=transit&language=zh-CN&region=jp";
+      const healthParams = new URLSearchParams({
+        origin: "Tokyo",
+        destination: "Yokohama",
+        mode: "driving",
+        language: "zh-CN",
+        region: "jp",
+        key: mapsApiKey,
+      });
+      const healthUrl = `https://maps.googleapis.com/maps/api/directions/json?${healthParams.toString()}`;
       const data = await requestJsonByCurl(healthUrl, 8);
       result.mapsApiReachable = true;
-      result.mapsApiStatus = data?.status || "OK";
+      result.mapsApiStatus = data?.status || "UNKNOWN";
+      if (data?.error_message) result.mapsApiError = data.error_message;
     } catch (err) {
       result.mapsApiError = err?.code || err.message || "访问失败";
     }
+  } else if (result.dnsOk && !mapsApiKey) {
+    result.mapsApiError = "未配置 GOOGLE_MAPS_API_KEY，跳过连通性探测";
   }
 
   res.json(result);
@@ -840,35 +852,36 @@ app.post("/api/plan-day", async (req, res) => {
     };
     const mode = modeMap[travelMode] || "transit";
     let orderedPlaces = [...places];
-    // 默认开车模式：先做一个最近邻近似排序，得到更实用的默认顺序
+    // 驾车模式：按直线距离做最近邻排序（避免 O(n²) Directions 调用）
     if (mode === "driving" && orderedPlaces.length > 1) {
+      const geoByName = {};
+      for (const name of orderedPlaces) {
+        const g = await geocodePlace(name, mapsApiKey);
+        if (g?.lat != null && g?.lng != null) geoByName[name] = g;
+      }
+      let currentGeo = await geocodePlace(hotel, mapsApiKey);
       const remaining = [...orderedPlaces];
       const reordered = [];
-      let current = hotel;
       while (remaining.length > 0) {
         let bestIdx = 0;
         let bestDist = Number.POSITIVE_INFINITY;
         for (let i = 0; i < remaining.length; i += 1) {
           const cand = remaining[i];
-          const p = new URLSearchParams({
-            origin: current,
-            destination: cand,
-            mode: "driving",
-            key: mapsApiKey,
-            language: "zh-CN",
-            region: "jp",
-          });
-          const durl = `https://maps.googleapis.com/maps/api/directions/json?${p.toString()}`;
-          const ddata = await requestJsonByCurl(durl, 10);
-          const v = ddata?.routes?.[0]?.legs?.[0]?.distance?.value;
-          if (typeof v === "number" && v < bestDist) {
-            bestDist = v;
+          const g = geoByName[cand];
+          if (!currentGeo?.lat || !g?.lat) {
+            bestIdx = i;
+            bestDist = 0;
+            break;
+          }
+          const d = haversineKm(currentGeo.lat, currentGeo.lng, g.lat, g.lng);
+          if (d < bestDist) {
+            bestDist = d;
             bestIdx = i;
           }
         }
         const pick = remaining.splice(bestIdx, 1)[0];
         reordered.push(pick);
-        current = pick;
+        currentGeo = geoByName[pick] || currentGeo;
       }
       orderedPlaces = reordered;
     }
