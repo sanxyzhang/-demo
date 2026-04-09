@@ -6,6 +6,15 @@
 - 自动优化中途点顺序（`optimizeWaypoints`）
 - 展示地图路线并生成当天 Google Maps 导航链接
 
+## 核心算法
+
+本项目实现了一套启发式行程分配算法：
+- 使用 **Haversine 公式**计算地点到各天酒店的球面距离
+- 综合考虑**地理位置**（优先顺路）和**时长均衡**（每天 7-9 小时）
+- 特殊规则：餐厅优先安排在景点较多的那天晚间
+
+详细说明请参考：[ASSIGNMENT_ALGORITHM.md](./ASSIGNMENT_ALGORITHM.md)
+
 ## 启动
 1. 安装依赖（已执行过可跳过）：
    - `npm install`
