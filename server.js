@@ -1093,10 +1093,4 @@ app.post("/api/suggest-restaurant-slot", async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Route planner running at http://localhost:${port}`);
-  if (proxyUrl) {
-    console.log(`Proxy enabled: ${proxyUrl}`);
-  } else {
-    console.log("Proxy not set. If Google is unreachable, set HTTP(S)_PROXY.");
-  }
 });
