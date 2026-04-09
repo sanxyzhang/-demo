@@ -278,6 +278,27 @@ function extractFirstJsonObject(text) {
   return null;
 }
 
+async function mapWithConcurrency(items, limit, mapper) {
+  const safeLimit = Math.max(1, Number(limit) || 1);
+  const results = new Array(items.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (true) {
+      const idx = cursor;
+      cursor += 1;
+      if (idx >= items.length) break;
+      // eslint-disable-next-line no-await-in-loop
+      results[idx] = await mapper(items[idx], idx);
+    }
+  };
+  const workers = Array.from(
+    { length: Math.min(safeLimit, items.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+  return results;
+}
+
 function assignPlacesByHeuristic(places, daySetups, placeGeo, placeProfiles, options = {}) {
   const targetDailyMin = Number(options.targetDailyMin || 420);
   const maxDailyMin = Number(options.maxDailyMin || 540);
@@ -444,19 +465,54 @@ async function assignPlacesByCursor({
   const createBody = {
     prompt: { text: promptText },
   };
-  if (cursorSourceRepository) {
-    createBody.source = { repository: cursorSourceRepository };
+  const repoCandidates = [];
+  const rawRepo = String(cursorSourceRepository || "").trim();
+  if (rawRepo) {
+    repoCandidates.push(rawRepo);
+    if (/^https:\/\/github\.com\/.+/i.test(rawRepo) && !rawRepo.endsWith(".git")) {
+      repoCandidates.push(`${rawRepo}.git`);
+    }
+    if (/^https:\/\/github\.com\/.+\.git$/i.test(rawRepo)) {
+      repoCandidates.push(rawRepo.slice(0, -4));
+    }
+    if (/^https:\/\/github\.com\/.+/i.test(rawRepo)) {
+      const repoPath = rawRepo
+        .replace(/^https:\/\/github\.com\//i, "")
+        .replace(/\.git$/i, "")
+        .replace(/\/+$/g, "");
+      if (repoPath) repoCandidates.push(repoPath);
+    }
+    if (/^git@github\.com:.+\.git$/i.test(rawRepo)) {
+      const repoPath = rawRepo.replace(/^git@github\.com:/i, "").replace(/\.git$/i, "");
+      repoCandidates.push(`https://github.com/${repoPath}`);
+      if (repoPath) repoCandidates.push(repoPath);
+    }
   }
+  const uniqueRepoCandidates = [...new Set(repoCandidates)];
+  // 最后尝试不传 source，走账号默认仓库
+  uniqueRepoCandidates.push("");
 
-  const createData = await requestJsonByCurlWithOptions({
-    url: `${CURSOR_AGENT_API_BASE}/agents`,
-    method: "POST",
-    body: createBody,
-    basicAuthUser: cursorApiKey,
-    timeoutSec: 40,
-  });
+  let createData = null;
+  let createErrorText = "";
+  for (const repo of uniqueRepoCandidates) {
+    const body = { ...createBody };
+    if (repo) body.source = { repository: repo };
+    // eslint-disable-next-line no-await-in-loop
+    createData = await requestJsonByCurlWithOptions({
+      url: `${CURSOR_AGENT_API_BASE}/agents`,
+      method: "POST",
+      body,
+      basicAuthUser: cursorApiKey,
+      timeoutSec: 40,
+    });
+    const errText = String(createData?.error || createData?.message || "");
+    if (!errText) break;
+    createErrorText = errText;
+    const retryableRepoError = /repository|default branch|determine/i.test(errText);
+    if (!retryableRepoError) break;
+  }
   if (createData?.error) {
-    return { assigned: null, reason: `cursor_api_error:${createData.error || createData.message || "unknown"}` };
+    return { assigned: null, reason: `cursor_api_error:${createErrorText || createData.error || createData.message || "unknown"}` };
   }
 
   const agentId = createData?.id || createData?.agent?.id;
@@ -465,8 +521,8 @@ async function assignPlacesByCursor({
   }
 
   let finalData = null;
-  for (let i = 0; i < 18; i += 1) {
-    // 最高约 36s 轮询
+  for (let i = 0; i < 40; i += 1) {
+    // 最高约 80s 轮询
     // eslint-disable-next-line no-await-in-loop
     finalData = await requestJsonByCurlWithOptions({
       url: `${CURSOR_AGENT_API_BASE}/agents/${encodeURIComponent(agentId)}`,
@@ -483,6 +539,9 @@ async function assignPlacesByCursor({
   const status = String(finalData?.status || "").toLowerCase();
   if (["failed", "cancelled", "canceled", "error"].includes(status)) {
     return { assigned: null, reason: `cursor_agent_${status}:${finalData?.error || finalData?.message || "unknown"}` };
+  }
+  if (!["completed", "done", "succeeded"].includes(status)) {
+    return { assigned: null, reason: `cursor_agent_timeout:${status || "unknown"}` };
   }
 
   const content =
@@ -572,15 +631,14 @@ app.post("/api/smart-plan-info", async (req, res) => {
       return;
     }
 
-    // ── Step 1: Geocode + Place profile 所有地点 ──
-    const placeGeo = [];
-    const placeProfiles = [];
-    for (const p of places) {
+    // ── Step 1: Geocode + Place profile 所有地点（并发限流） ──
+    const placeMeta = await mapWithConcurrency(places, 4, async (p) => {
       const g = await geocodePlace(p.name, mapsApiKey);
-      placeGeo.push(g); // may be null if geocode fails
       const profile = await searchPlaceProfile(p.name, mapsApiKey, g?.lat, g?.lng);
-      placeProfiles.push(profile);
-    }
+      return { geo: g, profile };
+    });
+    const placeGeo = placeMeta.map((x) => x.geo || null);
+    const placeProfiles = placeMeta.map((x) => x.profile || null);
 
     const baseEnriched = places.map((p, i) => {
       const inferredTypeDuration = (placeProfiles[i]?.types || [])
