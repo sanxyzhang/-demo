@@ -1011,6 +1011,28 @@ app.post("/api/plan-day", async (req, res) => {
   }
 });
 
+app.post("/api/assign-places-to-days", async (req, res) => {
+  try {
+    const places = Array.isArray(req.body?.places) ? req.body.places : [];
+    const numDays = Number(req.body?.numDays) || 2;
+
+    if (places.length === 0) {
+      res.json({ assignments: [] });
+      return;
+    }
+
+    const assignments = places.map((place, index) => {
+      const name = typeof place === "string" ? place : (place?.name || `Place ${index + 1}`);
+      const dayIndex = index % numDays;
+      return { name, dayIndex };
+    });
+
+    res.json({ assignments });
+  } catch (err) {
+    res.status(500).json({ error: "地点分配失败", details: err.message || "未知异常" });
+  }
+});
+
 app.post("/api/suggest-restaurant-slot", async (req, res) => {
   try {
     if (!mapsApiKey) {
